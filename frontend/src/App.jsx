@@ -1,30 +1,46 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FileUpload from "./components/FileUpload";
 import Dashboard from "./components/Dashboard";
-import { uploadFile, generateSummary } from "./api/client";
+import HistoryTable from "./components/HistoryTable";
+import { uploadFile, generateSummary, getHistory } from "./api/client";
 
 const INITIAL = {
-  phase: "idle",         // "idle" | "uploading" | "summarizing" | "dashboard"
+  phase: "idle",       // "idle" | "uploading" | "summarizing" | "dashboard"
   uploadId: null,
   chartData: null,
   dateRange: null,
   totalObservations: null,
   atRiskDescriptions: [],
-  summary: null,
+  userSummary: null,
+  managerSummary: null,
   error: null,
 };
 
 export default function App() {
   const [state, setState] = useState(INITIAL);
+  const [history, setHistory] = useState([]);
+
+  // Load upload history on mount
+  useEffect(() => {
+    getHistory()
+      .then((data) => setHistory(data.uploads))
+      .catch(() => {}); // fail silently — app works without history
+  }, []);
 
   const patch = (updates) =>
     setState((prev) => ({ ...prev, ...updates }));
 
-  const handleFileUpload = async (file) => {
+  const refreshHistory = () => {
+    getHistory()
+      .then((data) => setHistory(data.uploads))
+      .catch(() => {});
+  };
+
+  const handleFileUpload = async (file, uploadedBy) => {
     patch({ phase: "uploading", error: null });
 
     try {
-      const data = await uploadFile(file);
+      const data = await uploadFile(file, uploadedBy);
       patch({
         phase: "summarizing",
         uploadId: data.upload_id,
@@ -42,7 +58,14 @@ export default function App() {
         atrisk_descriptions: data.atrisk_descriptions,
       });
 
-      patch({ phase: "dashboard", summary: summaryData.summary });
+      patch({
+        phase: "dashboard",
+        userSummary: summaryData.user_summary,
+        managerSummary: summaryData.manager_summary,
+      });
+
+      // Refresh history so the new upload appears if user resets
+      refreshHistory();
     } catch (err) {
       patch({
         phase: "idle",
@@ -53,7 +76,10 @@ export default function App() {
     }
   };
 
-  const handleReset = () => setState(INITIAL);
+  const handleReset = () => {
+    refreshHistory();
+    setState(INITIAL);
+  };
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -115,8 +141,10 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Error banner */}
         {state.error && (
-          <div className="mb-6 flex items-start gap-3 bg-red-900/30 border border-red-700/60
-                          rounded-xl p-4 text-red-300 text-sm">
+          <div
+            className="mb-6 flex items-start gap-3 bg-red-900/30 border border-red-700/60
+                          rounded-xl p-4 text-red-300 text-sm"
+          >
             <svg
               className="w-5 h-5 flex-shrink-0 mt-0.5"
               fill="none"
@@ -134,9 +162,11 @@ export default function App() {
           </div>
         )}
 
-        {/* Phases */}
         {state.phase === "idle" && (
-          <FileUpload onUpload={handleFileUpload} />
+          <>
+            <FileUpload onUpload={handleFileUpload} />
+            <HistoryTable history={history} currentUploadId={state.uploadId} />
+          </>
         )}
 
         {(state.phase === "uploading" || state.phase === "summarizing") && (
@@ -146,10 +176,12 @@ export default function App() {
         {state.phase === "dashboard" && (
           <Dashboard
             chartData={state.chartData}
-            summary={state.summary}
+            userSummary={state.userSummary}
+            managerSummary={state.managerSummary}
             dateRange={state.dateRange}
             totalObservations={state.totalObservations}
             uploadId={state.uploadId}
+            history={history}
           />
         )}
       </main>
@@ -160,19 +192,23 @@ export default function App() {
 function LoadingScreen({ phase }) {
   const messages = {
     uploading: "Parsing Excel data...",
-    summarizing: "Generating AI executive summary...",
+    summarizing: "Generating AI summary...",
   };
   return (
     <div className="flex flex-col items-center justify-center h-64 gap-5">
       <div className="relative">
         <div className="w-14 h-14 border-4 border-blue-900 rounded-full" />
-        <div className="absolute inset-0 w-14 h-14 border-4 border-blue-500 border-t-transparent
-                        rounded-full animate-spin" />
+        <div
+          className="absolute inset-0 w-14 h-14 border-4 border-blue-500 border-t-transparent
+                        rounded-full animate-spin"
+        />
       </div>
       <div className="text-center">
         <p className="text-blue-300 text-sm font-medium">{messages[phase]}</p>
         <p className="text-gray-600 text-xs mt-1">
-          {phase === "summarizing" ? "This may take 10-20 seconds" : "Just a moment..."}
+          {phase === "summarizing"
+            ? "This may take 10-20 seconds"
+            : "Just a moment..."}
         </p>
       </div>
     </div>

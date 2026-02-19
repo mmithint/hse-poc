@@ -1,5 +1,8 @@
+import SummaryTabs from "./SummaryTabs";
+
 export default function SummaryPanel({
-  summary,
+  userSummary,
+  managerSummary,
   dateRange,
   onSendEmail,
   onDownload,
@@ -10,7 +13,7 @@ export default function SummaryPanel({
       <div className="flex items-start justify-between gap-4 mb-5">
         <div>
           <h2 className="text-base font-semibold text-white">
-            AI-Generated Executive Summary
+            AI-Generated Summary
           </h2>
           {dateRange && (
             <p className="text-sm text-gray-400 mt-0.5">Period: {dateRange}</p>
@@ -29,38 +32,18 @@ export default function SummaryPanel({
           >
             {downloading ? (
               <>
-                <svg
-                  className="w-4 h-4 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12" cy="12" r="10"
-                    stroke="currentColor" strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8z"
-                  />
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10"
+                    stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
                 Generating...
               </>
             ) : (
               <>
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Download PDF
               </>
@@ -74,33 +57,16 @@ export default function SummaryPanel({
                        active:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm
                        font-medium transition-colors duration-150"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
             Send Email Report
           </button>
         </div>
       </div>
 
-      <div className="bg-gray-800/60 rounded-lg border border-gray-700 p-5">
-        {summary ? (
-          <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">
-            {summary}
-          </p>
-        ) : (
-          <p className="text-gray-500 italic text-sm">Summary not available.</p>
-        )}
-      </div>
+      <SummaryTabs userSummary={userSummary} managerSummary={managerSummary} />
     </div>
   );
 }

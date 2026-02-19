@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { sendEmailReport } from "../api/client";
 
-export default function EmailModal({ summary, uploadId, dateRange, onClose }) {
+export default function EmailModal({ managerSummary, uploadId, dateRange, onClose }) {
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState(
     `HSE Observation Report \u2013 ${dateRange}`
@@ -20,7 +20,7 @@ export default function EmailModal({ summary, uploadId, dateRange, onClose }) {
       await sendEmailReport({
         to_email: email,
         subject,
-        summary,
+        manager_summary: managerSummary,
         upload_id: uploadId,
       });
       setStatus("sent");

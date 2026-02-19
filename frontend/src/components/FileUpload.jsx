@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 
 export default function FileUpload({ onUpload }) {
   const [dragOver, setDragOver] = useState(false);
+  const [uploadedBy, setUploadedBy] = useState("");
 
   const handleFile = useCallback(
     (file) => {
@@ -10,9 +11,9 @@ export default function FileUpload({ onUpload }) {
         alert("Please upload an Excel file (.xlsx or .xls)");
         return;
       }
-      onUpload(file);
+      onUpload(file, uploadedBy.trim() || "Unknown");
     },
-    [onUpload]
+    [onUpload, uploadedBy]
   );
 
   const handleDrop = useCallback(
@@ -35,6 +36,22 @@ export default function FileUpload({ onUpload }) {
             Upload your Excel observation report to generate charts, an AI
             summary, and a VP-ready email.
           </p>
+        </div>
+
+        {/* Uploaded By input */}
+        <div className="text-left">
+          <label className="block text-sm font-medium text-gray-300 mb-1.5">
+            Your Name <span className="text-gray-500">(Uploaded By)</span>
+          </label>
+          <input
+            type="text"
+            value={uploadedBy}
+            onChange={(e) => setUploadedBy(e.target.value)}
+            placeholder="e.g. John Smith"
+            className="w-full bg-gray-900 border border-gray-600 rounded-lg
+                       px-4 py-2.5 text-white placeholder-gray-500
+                       focus:outline-none focus:border-blue-500 transition-colors text-sm"
+          />
         </div>
 
         <div
@@ -91,10 +108,6 @@ export default function FileUpload({ onUpload }) {
             className="hidden"
           />
         </div>
-
-        <p className="text-xs text-gray-600">
-          Your file is processed locally and never stored permanently.
-        </p>
       </div>
     </div>
   );

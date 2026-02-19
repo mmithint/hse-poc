@@ -6,8 +6,9 @@ const api = axios.create({
   timeout: 90000, // 90s to accommodate Azure OpenAI latency
 });
 
-export const uploadFile = async (file) => {
+export const uploadFile = async (file, uploadedBy = "Unknown") => {
   const formData = new FormData();
+  formData.append("uploaded_by", uploadedBy); // text field first
   formData.append("file", file);
   const res = await api.post("/api/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -17,7 +18,7 @@ export const uploadFile = async (file) => {
 
 export const generateSummary = async (payload) => {
   const res = await api.post("/api/summarize", payload);
-  return res.data;
+  return res.data; // { user_summary, manager_summary }
 };
 
 export const sendEmailReport = async (payload) => {
@@ -30,4 +31,22 @@ export const downloadReport = async (payload) => {
     responseType: "blob",
   });
   return res.data; // Blob
+};
+
+export const getHistory = async () => {
+  const res = await api.get("/api/history");
+  return res.data; // { uploads: [...] }
+};
+
+export const getUploadDetail = async (uploadId) => {
+  const res = await api.get(`/api/uploads/${uploadId}`);
+  return res.data;
+};
+
+export const compareUploads = async (currentId, previousId) => {
+  const res = await api.post("/api/compare", {
+    current_upload_id: currentId,
+    previous_upload_id: previousId,
+  });
+  return res.data;
 };
