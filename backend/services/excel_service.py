@@ -70,16 +70,20 @@ def parse_excel(file_bytes: bytes) -> Tuple[str, UploadResponse]:
             atrisk_df["description"].dropna().astype(str).head(10).tolist()
         )
 
-    # Extract ALL (description, facility) pairs for LLM intervention detection
+    # Extract ALL (description, facility, category) for LLM intervention detection
     observation_details: list[dict] = []
     if "description" in df.columns and "facility" in df.columns:
-        details_df = df[["description", "facility"]].dropna(subset=["description"])
+        cols = ["description", "facility"]
+        if "category" in df.columns:
+            cols.append("category")
+        details_df = df[cols].dropna(subset=["description"])
         for _, row in details_df.iterrows():
             desc = str(row["description"]).strip()
             if desc and desc.lower() != "nan":
                 observation_details.append({
-                    "description": desc[:300],  # truncate to manage token limits
+                    "description": desc[:1000],
                     "facility": str(row["facility"]).strip(),
+                    "category": str(row.get("category", "Unknown")).strip(),
                 })
 
     upload_id = str(uuid.uuid4())

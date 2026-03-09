@@ -122,7 +122,10 @@ async def upload_file(
 @app.post("/api/summarize", response_model=SummarizeResponse)
 async def summarize(req: SummarizeRequest):
     try:
-        result = generate_summary(req)
+        # Fetch full observation_details from MongoDB (frontend no longer sends them)
+        doc = await get_upload_by_id(req.upload_id)
+        observation_details = doc.get("observation_details", []) if doc else []
+        result = await generate_summary(req, observation_details=observation_details)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Azure OpenAI call failed: {exc}")
 

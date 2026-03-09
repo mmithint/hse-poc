@@ -3,7 +3,7 @@ import axios from "axios";
 // Using Vite proxy: baseURL is empty so requests go through the proxy at /api
 const api = axios.create({
   baseURL: "",
-  timeout: 90000, // 90s to accommodate Azure OpenAI latency
+  timeout: 180000, // 180s for batched LLM processing of large files
 });
 
 export const uploadFile = async (file, uploadedBy = "Unknown") => {

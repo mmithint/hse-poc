@@ -60,7 +60,7 @@ export default function App() {
         date_range: data.date_range,
         total_observations: data.total_observations,
         atrisk_descriptions: data.atrisk_descriptions,
-        observation_details: data.observation_details || [],
+        // observation_details fetched server-side from MongoDB
       });
 
       // Merge intervention data from LLM response into chartData
