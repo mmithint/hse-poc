@@ -191,7 +191,7 @@ def chart_top_atrisk(top_atrisk_categories: Dict[str, int]) -> bytes:
         return _placeholder("No at-risk observations found")
 
     items = list(top_atrisk_categories.items())[:8]
-    categories = [_wrap(item[0], 16) for item in items]
+    categories = [item[0] for item in items]
     counts = [item[1] for item in items]
 
     red_shades = [
@@ -215,12 +215,13 @@ def chart_top_atrisk(top_atrisk_categories: Dict[str, int]) -> bytes:
         )
 
     ax.set_xticks(list(x_pos))
-    ax.set_xticklabels(categories, color=TEXT_COLOR, fontsize=10)
+    ax.set_xticklabels(categories, color=TEXT_COLOR, fontsize=10, rotation=45, ha='right')
     ax.set_ylabel("At-Risk Observations", color=LABEL_COLOR, fontsize=11)
     ax.set_title("Top At-Risk Categories", color=TEXT_COLOR, fontsize=14, pad=14, fontweight="bold")
     ax.yaxis.grid(True, color=GRID_COLOR, linewidth=0.5)
     ax.set_axisbelow(True)
     ax.set_ylim(0, max(counts) * 1.2)
+    fig.subplots_adjust(bottom=0.25)
     fig.tight_layout()
     return _fig_to_bytes(fig)
 
@@ -250,12 +251,13 @@ def chart_interventions_by_facility(interventions_by_facility: Dict[str, int]) -
         )
 
     ax.set_xticks(list(x_pos))
-    ax.set_xticklabels([_wrap(f, 16) for f in facilities], color=TEXT_COLOR, fontsize=10)
+    ax.set_xticklabels(facilities, color=TEXT_COLOR, fontsize=10, rotation=45, ha='right')
     ax.set_ylabel("Interventions", color=LABEL_COLOR, fontsize=11)
     ax.set_title("Interventions by Facility", color=TEXT_COLOR, fontsize=14, pad=14, fontweight="bold")
     ax.yaxis.grid(True, color=GRID_COLOR, linewidth=0.5)
     ax.set_axisbelow(True)
     ax.set_ylim(0, max(counts) * 1.2)
+    fig.subplots_adjust(bottom=0.25)
     fig.tight_layout()
     return _fig_to_bytes(fig)
 
@@ -280,13 +282,14 @@ def chart_trend_line(labels: List[str], values: List[float], title: str,
                     ha="center", fontsize=10, fontweight="bold", color=color)
 
     ax.set_xticks(list(x))
-    ax.set_xticklabels(labels, fontsize=9, color=TEXT_COLOR)
+    ax.set_xticklabels(labels, fontsize=9, color=TEXT_COLOR, rotation=45, ha='right')
     ax.set_title(title, color=TEXT_COLOR, fontsize=14, pad=14, fontweight="bold")
     ax.yaxis.grid(True, color=GRID_COLOR, linewidth=0.5)
     ax.set_axisbelow(True)
     if values:
         margin = (max(values) - min(values)) * 0.25 or max(values) * 0.1 or 1
         ax.set_ylim(min(values) - margin, max(values) + margin)
+    fig.subplots_adjust(bottom=0.25)
     fig.tight_layout()
     return _fig_to_bytes(fig)
 
