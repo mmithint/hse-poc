@@ -226,6 +226,7 @@ async def download_report(req: DownloadReportRequest):
             total_observations=req.total_observations,
             manager_summary=req.manager_summary,
             detailed_summary=req.detailed_summary,
+            category_analysis=req.category_analysis,
         )
     except Exception as exc:
         traceback.print_exc()

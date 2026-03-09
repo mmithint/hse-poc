@@ -56,6 +56,7 @@ class DownloadReportRequest(BaseModel):
     total_observations: int
     manager_summary: str = ""
     detailed_summary: str = ""
+    category_analysis: List[Dict] = []
 
 
 class DownloadComparisonRequest(BaseModel):

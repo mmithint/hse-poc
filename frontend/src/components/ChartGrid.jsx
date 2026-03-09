@@ -163,17 +163,20 @@ export default function ChartGrid({ chartData }) {
     ],
   };
 
-  // Interventions by Facility (5th chart)
+  // Interventions by Facility (5th chart) — sorted high-to-low
   const interventionsFacility = chartData.interventions_by_facility || {};
-  const hasInterventions = Object.keys(interventionsFacility).length > 0;
+  const interventionEntries = Object.entries(interventionsFacility).sort(
+    (a, b) => b[1] - a[1]
+  );
+  const hasInterventions = interventionEntries.length > 0;
 
   const interventionsData = hasInterventions
     ? {
-        labels: Object.keys(interventionsFacility),
+        labels: interventionEntries.map(([k]) => k),
         datasets: [
           {
             label: "Interventions",
-            data: Object.values(interventionsFacility),
+            data: interventionEntries.map(([, v]) => v),
             backgroundColor: "#9C27B0",
             borderRadius: 4,
           },

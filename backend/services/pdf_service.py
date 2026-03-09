@@ -8,7 +8,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Image,
-    Table, TableStyle, HRFlowable,
+    Table, TableStyle, HRFlowable, PageBreak,
 )
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 
@@ -160,77 +160,91 @@ def _summary_table(summary_text: str, page_width: float) -> Table:
 
 
 def _chart_grid(chart_images: Dict[str, bytes], page_width: float) -> List:
-    """2x2 grid of main charts + full-width interventions chart below. Returns list of flowables."""
+    """One chart per page, full-width, for maximum readability."""
     usable = page_width - 2 * MARGIN
-    cell_w = usable / 2 - 0.3 * cm
-    cell_h = cell_w * 0.72
+    full_w = usable
+    full_h = full_w * 0.6  # generous height for each chart
 
-    labels = {
-        "chart_facility": "Observations by Facility",
-        "chart_category": "Top 10 Categories",
-        "chart_saferisk": "At-Risk vs Safe",
-        "chart_atrisk":   "Top At-Risk Categories",
-    }
     s = _styles()
+    label_style = ParagraphStyle(
+        "chart_label_page", fontSize=10, textColor=NAVY, fontName="Helvetica-Bold",
+        leading=14, spaceAfter=6, textTransform="uppercase", letterSpacing=0.5,
+    )
 
-    def chart_cell(cid: str) -> list:
+    # Charts in display order — each gets its own page
+    chart_sequence = [
+        ("chart_facility",      "Observations by Facility",  0.6),
+        ("chart_category",      "Top 10 Categories",         0.6),
+        ("chart_saferisk",      "At-Risk vs Safe",           0.55),
+        ("chart_atrisk",        "Top At-Risk Categories",    0.55),
+        ("chart_category_full", "All Categories",            0.65),
+        ("chart_interventions", "Interventions by Facility", 0.55),
+    ]
+
+    flowables: List = []
+    for cid, title, h_ratio in chart_sequence:
         img_bytes = chart_images.get(cid, b"")
         if not img_bytes:
-            return [Paragraph("No data", s["body"])]
-        img = Image(io.BytesIO(img_bytes), width=cell_w, height=cell_h)
-        label = Paragraph(labels.get(cid, cid), ParagraphStyle(
-            "chart_label", fontSize=8, textColor=NAVY, fontName="Helvetica-Bold",
-            leading=10, spaceAfter=3, textTransform="uppercase", letterSpacing=0.5,
-        ))
-        return [label, img]
+            continue
+        chart_h = full_w * h_ratio
+        flowables.append(PageBreak())
+        flowables.append(Paragraph(title, label_style))
+        flowables.append(Spacer(1, 0.3 * cm))
+        flowables.append(Image(io.BytesIO(img_bytes), width=full_w, height=chart_h))
 
-    data = [
-        [chart_cell("chart_facility"), chart_cell("chart_category")],
-        [chart_cell("chart_saferisk"), chart_cell("chart_atrisk")],
+    return flowables
+
+
+def _category_analysis_section(categories: list, page_width: float) -> list:
+    """Build flowables for the per-category positive/exposure analysis."""
+    s = _styles()
+    flowables = [
+        HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#BDBDBD")),
+        Spacer(1, 0.25 * cm),
+        Paragraph("Category Analysis", s["section_heading"]),
+        Spacer(1, 0.15 * cm),
     ]
-    grid_tbl = Table(data, colWidths=[cell_w + 0.3 * cm, cell_w + 0.3 * cm],
-                     rowHeights=None)
-    grid_tbl.setStyle(TableStyle([
-        ("VALIGN",       (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING",   (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 8),
-        ("LEFTPADDING",  (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-    ]))
 
-    flowables = [grid_tbl]
+    usable = page_width - 2 * MARGIN
+    cat_name_style = ParagraphStyle(
+        "cat_name", fontSize=10, fontName="Helvetica-Bold",
+        textColor=BLUE, leading=14, spaceAfter=4,
+    )
+    sub_heading_green = ParagraphStyle(
+        "sub_green", fontSize=9, fontName="Helvetica-Bold",
+        textColor=GREEN, leading=12, spaceAfter=3,
+    )
+    sub_heading_red = ParagraphStyle(
+        "sub_red", fontSize=9, fontName="Helvetica-Bold",
+        textColor=RED, leading=12, spaceAfter=3,
+    )
+    bullet_style = ParagraphStyle(
+        "cat_bullet", fontSize=9, textColor=DARK_GRAY,
+        fontName="Helvetica", leading=13, spaceAfter=2,
+    )
 
-    # Full-width "All Categories" chart (only when >10 categories)
-    if "chart_category_full" in chart_images and chart_images["chart_category_full"]:
-        full_w = usable
-        full_h = full_w * 0.55
-        cat_label = Paragraph("All Categories", ParagraphStyle(
-            "chart_label_catfull", fontSize=8, textColor=NAVY, fontName="Helvetica-Bold",
-            leading=10, spaceAfter=3, textTransform="uppercase", letterSpacing=0.5,
-        ))
-        cat_img = Image(
-            io.BytesIO(chart_images["chart_category_full"]),
-            width=full_w, height=full_h,
-        )
-        flowables.append(Spacer(1, 0.4 * cm))
-        flowables.append(cat_label)
-        flowables.append(cat_img)
+    for cat in categories:
+        name = cat.get("category", "Unknown")
+        positives = cat.get("positive_trends", [])
+        exposures = cat.get("remaining_exposure", [])
 
-    # Full-width interventions chart
-    if "chart_interventions" in chart_images and chart_images["chart_interventions"]:
-        full_w = usable
-        full_h = full_w * 0.4
-        interventions_label = Paragraph("Interventions by Facility", ParagraphStyle(
-            "chart_label_full", fontSize=8, textColor=NAVY, fontName="Helvetica-Bold",
-            leading=10, spaceAfter=3, textTransform="uppercase", letterSpacing=0.5,
-        ))
-        interventions_img = Image(
-            io.BytesIO(chart_images["chart_interventions"]),
-            width=full_w, height=full_h,
-        )
-        flowables.append(Spacer(1, 0.4 * cm))
-        flowables.append(interventions_label)
-        flowables.append(interventions_img)
+        flowables.append(Paragraph(xml_escape(name), cat_name_style))
+
+        if positives:
+            flowables.append(Paragraph("Positive Trends", sub_heading_green))
+            for item in positives:
+                flowables.append(Paragraph(
+                    f'\u2713 {xml_escape(str(item))}', bullet_style,
+                ))
+
+        if exposures:
+            flowables.append(Paragraph("Remaining Exposure", sub_heading_red))
+            for item in exposures:
+                flowables.append(Paragraph(
+                    f'\u26A0 {xml_escape(str(item))}', bullet_style,
+                ))
+
+        flowables.append(Spacer(1, 0.3 * cm))
 
     return flowables
 
@@ -242,6 +256,7 @@ def generate_pdf(
     total_observations: int,
     manager_summary: str = "",
     detailed_summary: str = "",
+    category_analysis: list = None,
 ) -> bytes:
     """
     Build a full HSE report PDF and return as bytes.
@@ -297,14 +312,8 @@ def generate_pdf(
             _summary_table(manager_summary, page_w),
         ])
 
-    story.extend([
-        Spacer(1, 0.6 * cm),
-        HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#BDBDBD")),
-        Spacer(1, 0.25 * cm),
-        Paragraph("Observation Charts", s["section_heading"]),
-        Spacer(1, 0.15 * cm),
-        *_chart_grid(chart_images, page_w),
-    ])
+    # Charts — each on its own page for readability
+    story.extend(_chart_grid(chart_images, page_w))
 
     # Detailed Analysis section
     if detailed_summary and detailed_summary.strip():
@@ -316,6 +325,11 @@ def generate_pdf(
             Spacer(1, 0.15 * cm),
             _summary_table(detailed_summary, page_w),
         ])
+
+    # Category Analysis section
+    if category_analysis:
+        story.append(Spacer(1, 0.6 * cm))
+        story.extend(_category_analysis_section(category_analysis, page_w))
 
     doc.build(story)
     buf.seek(0)

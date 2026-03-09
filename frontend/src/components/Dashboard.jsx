@@ -29,6 +29,7 @@ export default function Dashboard({
         total_observations: totalObservations,
         manager_summary: managerSummary || "",
         detailed_summary: detailedSummary || "",
+        category_analysis: categoryAnalysis || [],
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
