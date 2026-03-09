@@ -50,3 +50,24 @@ export const compareUploads = async (currentId, previousId) => {
   });
   return res.data;
 };
+
+export const multiCompare = async (uploadIds) => {
+  const res = await api.post("/api/multi-compare", {
+    upload_ids: uploadIds,
+  });
+  return res.data;
+};
+
+export const deleteUpload = async (uploadId) => {
+  const res = await api.delete(`/api/uploads/${uploadId}`);
+  return res.data;
+};
+
+export const downloadComparison = async (uploadIds) => {
+  const res = await api.post("/api/download-comparison", {
+    upload_ids: uploadIds,
+  }, {
+    responseType: "blob",
+  });
+  return res.data;
+};

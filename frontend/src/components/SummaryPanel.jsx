@@ -3,6 +3,8 @@ import SummaryTabs from "./SummaryTabs";
 export default function SummaryPanel({
   userSummary,
   managerSummary,
+  detailedSummary,
+  categoryAnalysis,
   dateRange,
   onSendEmail,
   onDownload,
@@ -66,7 +68,7 @@ export default function SummaryPanel({
         </div>
       </div>
 
-      <SummaryTabs userSummary={userSummary} managerSummary={managerSummary} />
+      <SummaryTabs userSummary={userSummary} managerSummary={managerSummary} detailedSummary={detailedSummary} categoryAnalysis={categoryAnalysis} />
     </div>
   );
 }

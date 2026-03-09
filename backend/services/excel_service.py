@@ -24,19 +24,19 @@ def parse_excel(file_bytes: bytes) -> Tuple[str, UploadResponse]:
     """
     df = pd.read_excel(io.BytesIO(file_bytes), engine="openpyxl")
 
-    # Normalize column names — strip whitespace first, then rename
+    # Normalize column names -- strip whitespace first, then rename
     df.columns = df.columns.str.strip()
     df.rename(columns=COLUMN_MAP, inplace=True)
 
     # Drop fully empty rows
     df.dropna(how="all", inplace=True)
 
-    # Normalize observation type: "at risk" / "AT RISK" / "Safe" / "safe" → title case
+    # Normalize observation type: "at risk" / "AT RISK" / "Safe" / "safe" -> title case
     df["observation_type"] = (
         df["observation_type"].astype(str).str.strip().str.title()
     )
 
-    # Normalize category and facility — strip whitespace
+    # Normalize category and facility -- strip whitespace
     for col in ("facility", "category"):
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip()
@@ -70,6 +70,18 @@ def parse_excel(file_bytes: bytes) -> Tuple[str, UploadResponse]:
             atrisk_df["description"].dropna().astype(str).head(10).tolist()
         )
 
+    # Extract ALL (description, facility) pairs for LLM intervention detection
+    observation_details: list[dict] = []
+    if "description" in df.columns and "facility" in df.columns:
+        details_df = df[["description", "facility"]].dropna(subset=["description"])
+        for _, row in details_df.iterrows():
+            desc = str(row["description"]).strip()
+            if desc and desc.lower() != "nan":
+                observation_details.append({
+                    "description": desc[:300],  # truncate to manage token limits
+                    "facility": str(row["facility"]).strip(),
+                })
+
     upload_id = str(uuid.uuid4())
     chart_data = ChartData(
         by_facility=by_facility,
@@ -84,6 +96,7 @@ def parse_excel(file_bytes: bytes) -> Tuple[str, UploadResponse]:
         date_range=date_range,
         total_observations=len(df),
         atrisk_descriptions=atrisk_descriptions,
+        observation_details=observation_details,
     )
     return upload_id, response
 
@@ -92,6 +105,6 @@ def _build_date_range(date_series: pd.Series) -> str:
     valid = date_series.dropna()
     if valid.empty:
         return "Unknown Period"
-    min_d = valid.min().strftime("%b %Y")
-    max_d = valid.max().strftime("%b %Y")
+    min_d = valid.min().strftime("%b %d, %Y")
+    max_d = valid.max().strftime("%b %d, %Y")
     return f"{min_d} \u2013 {max_d}" if min_d != max_d else min_d

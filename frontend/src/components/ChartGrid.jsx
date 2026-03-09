@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -77,7 +78,11 @@ const doughnutOptions = {
   },
 };
 
+const TOP_N = 10;
+
 export default function ChartGrid({ chartData }) {
+  const [showAllCategories, setShowAllCategories] = useState(false);
+
   if (!chartData) return null;
 
   const facilityData = {
@@ -92,19 +97,44 @@ export default function ChartGrid({ chartData }) {
     ],
   };
 
+  // Sort categories descending by count, take top 10
+  const allCategoryEntries = Object.entries(chartData.by_category).sort(
+    (a, b) => b[1] - a[1]
+  );
+  const hasMoreCategories = allCategoryEntries.length > TOP_N;
+  const topCategoryEntries = hasMoreCategories
+    ? allCategoryEntries.slice(0, TOP_N)
+    : allCategoryEntries;
+
   const categoryData = {
-    labels: Object.keys(chartData.by_category),
+    labels: topCategoryEntries.map(([k]) => k),
     datasets: [
       {
         label: "Observations",
-        data: Object.values(chartData.by_category),
-        backgroundColor: Object.keys(chartData.by_category).map(
+        data: topCategoryEntries.map(([, v]) => v),
+        backgroundColor: topCategoryEntries.map(
           (_, i) => MULTI_COLORS[i % MULTI_COLORS.length]
         ),
         borderRadius: 4,
       },
     ],
   };
+
+  const fullCategoryData = hasMoreCategories
+    ? {
+        labels: allCategoryEntries.map(([k]) => k),
+        datasets: [
+          {
+            label: "Observations",
+            data: allCategoryEntries.map(([, v]) => v),
+            backgroundColor: allCategoryEntries.map(
+              (_, i) => MULTI_COLORS[i % MULTI_COLORS.length]
+            ),
+            borderRadius: 4,
+          },
+        ],
+      }
+    : null;
 
   const safeRiskData = {
     labels: ["Safe", "At Risk"],
@@ -133,13 +163,31 @@ export default function ChartGrid({ chartData }) {
     ],
   };
 
+  // Interventions by Facility (5th chart)
+  const interventionsFacility = chartData.interventions_by_facility || {};
+  const hasInterventions = Object.keys(interventionsFacility).length > 0;
+
+  const interventionsData = hasInterventions
+    ? {
+        labels: Object.keys(interventionsFacility),
+        datasets: [
+          {
+            label: "Interventions",
+            data: Object.values(interventionsFacility),
+            backgroundColor: "#9C27B0",
+            borderRadius: 4,
+          },
+        ],
+      }
+    : null;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <ChartCard title="Observations by Facility">
         <Bar data={facilityData} options={horizontalBarOptions} />
       </ChartCard>
 
-      <ChartCard title="Observations by Category">
+      <ChartCard title={hasMoreCategories ? "Top 10 Categories" : "Observations by Category"}>
         <Bar data={categoryData} options={horizontalBarOptions} />
       </ChartCard>
 
@@ -150,13 +198,35 @@ export default function ChartGrid({ chartData }) {
       <ChartCard title="Top At-Risk Categories">
         <Bar data={atRiskData} options={verticalBarOptions} />
       </ChartCard>
+
+      {hasInterventions && (
+        <ChartCard title="Interventions by Facility" colSpan>
+          <Bar data={interventionsData} options={verticalBarOptions} />
+        </ChartCard>
+      )}
+
+      {hasMoreCategories && (
+        <div className="md:col-span-2">
+          <button
+            onClick={() => setShowAllCategories((v) => !v)}
+            className="text-sm text-blue-400 hover:text-blue-300 mb-3 transition-colors"
+          >
+            {showAllCategories ? "Hide all categories" : `Show all ${allCategoryEntries.length} categories`}
+          </button>
+          {showAllCategories && (
+            <ChartCard title="All Categories" height={Math.max(320, allCategoryEntries.length * 28)}>
+              <Bar data={fullCategoryData} options={horizontalBarOptions} />
+            </ChartCard>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function ChartCard({ title, children, height = 320 }) {
+function ChartCard({ title, children, height = 320, colSpan = false }) {
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+    <div className={`bg-gray-900 rounded-xl border border-gray-800 p-5${colSpan ? " md:col-span-2" : ""}`}>
       <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
         {title}
       </h3>

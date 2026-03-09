@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import FileUpload from "./components/FileUpload";
 import Dashboard from "./components/Dashboard";
 import HistoryTable from "./components/HistoryTable";
-import { uploadFile, generateSummary, getHistory } from "./api/client";
+import { uploadFile, generateSummary, getHistory, deleteUpload } from "./api/client";
 
 const INITIAL = {
   phase: "idle",       // "idle" | "uploading" | "summarizing" | "dashboard"
@@ -11,8 +11,11 @@ const INITIAL = {
   dateRange: null,
   totalObservations: null,
   atRiskDescriptions: [],
+  observationDetails: [],
   userSummary: null,
   managerSummary: null,
+  detailedSummary: null,
+  categoryAnalysis: [],
   error: null,
 };
 
@@ -48,6 +51,7 @@ export default function App() {
         dateRange: data.date_range,
         totalObservations: data.total_observations,
         atRiskDescriptions: data.atrisk_descriptions,
+        observationDetails: data.observation_details || [],
       });
 
       const summaryData = await generateSummary({
@@ -56,12 +60,23 @@ export default function App() {
         date_range: data.date_range,
         total_observations: data.total_observations,
         atrisk_descriptions: data.atrisk_descriptions,
+        observation_details: data.observation_details || [],
       });
+
+      // Merge intervention data from LLM response into chartData
+      const mergedChartData = {
+        ...data.chart_data,
+        interventions_by_facility: summaryData.interventions_by_facility || {},
+        total_interventions: summaryData.total_interventions || 0,
+      };
 
       patch({
         phase: "dashboard",
+        chartData: mergedChartData,
         userSummary: summaryData.user_summary,
         managerSummary: summaryData.manager_summary,
+        detailedSummary: summaryData.detailed_summary || null,
+        categoryAnalysis: summaryData.category_analysis || [],
       });
 
       // Refresh history so the new upload appears if user resets
@@ -73,6 +88,15 @@ export default function App() {
           err.response?.data?.detail ??
           "Something went wrong. Please try again.",
       });
+    }
+  };
+
+  const handleDeleteUpload = async (id) => {
+    try {
+      await deleteUpload(id);
+      refreshHistory();
+    } catch {
+      // fail silently
     }
   };
 
@@ -165,7 +189,7 @@ export default function App() {
         {state.phase === "idle" && (
           <>
             <FileUpload onUpload={handleFileUpload} />
-            <HistoryTable history={history} currentUploadId={state.uploadId} />
+            <HistoryTable history={history} currentUploadId={state.uploadId} onDelete={handleDeleteUpload} />
           </>
         )}
 
@@ -178,6 +202,8 @@ export default function App() {
             chartData={state.chartData}
             userSummary={state.userSummary}
             managerSummary={state.managerSummary}
+            detailedSummary={state.detailedSummary}
+            categoryAnalysis={state.categoryAnalysis}
             dateRange={state.dateRange}
             totalObservations={state.totalObservations}
             uploadId={state.uploadId}

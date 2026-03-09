@@ -9,6 +9,8 @@ export default function Dashboard({
   chartData,
   userSummary,
   managerSummary,
+  detailedSummary,
+  categoryAnalysis,
   dateRange,
   totalObservations,
   uploadId,
@@ -16,7 +18,7 @@ export default function Dashboard({
 }) {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [compareUploadId, setCompareUploadId] = useState("");
+  const [selectedUploadIds, setSelectedUploadIds] = useState([]);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -25,6 +27,8 @@ export default function Dashboard({
         upload_id: uploadId,
         user_summary: userSummary,
         total_observations: totalObservations,
+        manager_summary: managerSummary || "",
+        detailed_summary: detailedSummary || "",
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -45,20 +49,34 @@ export default function Dashboard({
     totalObservations > 0
       ? ((atRiskCount / totalObservations) * 100).toFixed(1)
       : "0.0";
+  const interventionCount = chartData?.total_interventions ?? 0;
 
-  // Filter history to exclude the current upload from the comparison dropdown
+  // Filter history to exclude the current upload from the comparison list
   const historyForComparison = (history || []).filter(
     (h) => h.upload_id !== uploadId
   );
 
+  const toggleCompareUpload = (id) => {
+    setSelectedUploadIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 3) return prev; // max 3 others + current = 4 total
+      return [...prev, id];
+    });
+  };
+
+  // Build the full list: current + selected, for multi-compare
+  const compareUploadIds =
+    selectedUploadIds.length > 0 ? [uploadId, ...selectedUploadIds] : [];
+
   return (
     <div className="space-y-7">
       {/* KPI strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <KPICard label="Total Observations" value={totalObservations?.toLocaleString()} color="blue" />
         <KPICard label="Safe Observations" value={safeCount?.toLocaleString()} color="green" />
         <KPICard label="At-Risk Observations" value={atRiskCount?.toLocaleString()} color="red" />
         <KPICard label="At-Risk Rate" value={`${atRiskPct}%`} color="orange" />
+        <KPICard label="Interventions" value={interventionCount?.toLocaleString()} color="purple" />
       </div>
 
       {/* Charts */}
@@ -68,49 +86,61 @@ export default function Dashboard({
       <SummaryPanel
         userSummary={userSummary}
         managerSummary={managerSummary}
+        detailedSummary={detailedSummary}
+        categoryAnalysis={categoryAnalysis}
         dateRange={dateRange}
         onSendEmail={() => setShowEmailModal(true)}
         onDownload={handleDownload}
         downloading={downloading}
       />
 
-      {/* Monthly comparison */}
+      {/* Week-over-Week comparison */}
       {historyForComparison.length > 0 && (
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-white">
-                Compare with Previous Month
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Select a previous report to see trends and deltas
-              </p>
-            </div>
-            <select
-              value={compareUploadId}
-              onChange={(e) => setCompareUploadId(e.target.value)}
-              className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5
-                         text-white text-sm focus:outline-none focus:border-blue-500
-                         transition-colors min-w-[260px]"
-            >
-              <option value="">Select a previous upload...</option>
-              {historyForComparison.map((h) => (
-                <option key={h.upload_id} value={h.upload_id}>
-                  {h.date_range} — {h.filename}
-                </option>
-              ))}
-            </select>
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-white">
+              Week-over-Week Comparison
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Select up to 3 previous uploads to compare trends (max 4 weeks total)
+            </p>
           </div>
 
-          {compareUploadId ? (
-            <ComparisonView
-              currentUploadId={uploadId}
-              previousUploadId={compareUploadId}
-            />
+          <div className="flex flex-wrap gap-3 mb-4">
+            {historyForComparison.map((h) => {
+              const checked = selectedUploadIds.includes(h.upload_id);
+              const disabled = !checked && selectedUploadIds.length >= 3;
+              return (
+                <label
+                  key={h.upload_id}
+                  className={[
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm cursor-pointer transition-colors",
+                    checked
+                      ? "bg-blue-900/40 border-blue-600 text-blue-300"
+                      : disabled
+                      ? "bg-gray-800/40 border-gray-700 text-gray-600 cursor-not-allowed"
+                      : "bg-gray-800 border-gray-600 text-gray-300 hover:border-gray-500",
+                  ].join(" ")}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={disabled}
+                    onChange={() => toggleCompareUpload(h.upload_id)}
+                    className="accent-blue-500"
+                  />
+                  <span>{h.date_range} — {h.filename}</span>
+                </label>
+              );
+            })}
+          </div>
+
+          {compareUploadIds.length >= 2 ? (
+            <ComparisonView uploadIds={compareUploadIds} />
           ) : (
             <div className="border border-dashed border-gray-700 rounded-lg p-8 text-center">
               <p className="text-gray-500 text-sm">
-                Choose a previous report above to compare metrics and trends
+                Select at least one previous upload above to compare metrics and trends
               </p>
             </div>
           )}
@@ -135,12 +165,14 @@ function KPICard({ label, value, color }) {
     green: "bg-green-950/50 border-green-800/60",
     red: "bg-red-950/50 border-red-800/60",
     orange: "bg-orange-950/50 border-orange-800/60",
+    purple: "bg-purple-950/50 border-purple-800/60",
   };
   const valueColors = {
     blue: "text-blue-300",
     green: "text-green-300",
     red: "text-red-300",
     orange: "text-orange-300",
+    purple: "text-purple-300",
   };
   return (
     <div className={`rounded-xl border p-5 ${styles[color]}`}>

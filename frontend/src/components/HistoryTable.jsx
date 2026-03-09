@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function HistoryTable({ history, currentUploadId }) {
+export default function HistoryTable({ history, currentUploadId, onDelete }) {
   const [expandedId, setExpandedId] = useState(null);
 
   if (!history || history.length === 0) return null;
@@ -23,7 +23,7 @@ export default function HistoryTable({ history, currentUploadId }) {
                 <th className="px-4 py-3 text-xs text-gray-500 font-medium">Upload Date</th>
                 <th className="px-4 py-3 text-xs text-gray-500 font-medium">Period</th>
                 <th className="px-4 py-3 text-xs text-gray-500 font-medium text-right">Obs.</th>
-                <th className="px-4 py-3 text-xs text-gray-500 font-medium text-center">View</th>
+                <th className="px-4 py-3 text-xs text-gray-500 font-medium text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -35,6 +35,7 @@ export default function HistoryTable({ history, currentUploadId }) {
                   isCurrent={item.upload_id === currentUploadId}
                   isExpanded={expandedId === item.upload_id}
                   onToggle={() => toggle(item.upload_id)}
+                  onDelete={onDelete}
                 />
               ))}
             </tbody>
@@ -45,7 +46,7 @@ export default function HistoryTable({ history, currentUploadId }) {
   );
 }
 
-function HistoryRow({ item, index, isCurrent, isExpanded, onToggle }) {
+function HistoryRow({ item, index, isCurrent, isExpanded, onToggle, onDelete }) {
   const formattedDate = item.upload_date
     ? new Date(item.upload_date).toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -86,31 +87,53 @@ function HistoryRow({ item, index, isCurrent, isExpanded, onToggle }) {
           {item.total_observations.toLocaleString()}
         </td>
         <td className="px-4 py-3 text-center">
-          <button
-            onClick={onToggle}
-            className={[
-              "inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border transition-all",
-              isExpanded
-                ? "text-gray-300 border-gray-600 bg-gray-700/50"
-                : "text-blue-400 border-blue-800/50 hover:border-blue-500 hover:bg-blue-900/20",
-            ].join(" ")}
-          >
-            {isExpanded ? (
-              <>
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
-                Hide
-              </>
-            ) : (
-              <>
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-                View
-              </>
-            )}
-          </button>
+          <div className="inline-flex items-center gap-1.5">
+            <button
+              onClick={onToggle}
+              className={[
+                "inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border transition-all",
+                isExpanded
+                  ? "text-gray-300 border-gray-600 bg-gray-700/50"
+                  : "text-blue-400 border-blue-800/50 hover:border-blue-500 hover:bg-blue-900/20",
+              ].join(" ")}
+            >
+              {isExpanded ? (
+                <>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                  Hide
+                </>
+              ) : (
+                <>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  View
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm("Delete this report?")) {
+                  onDelete(item.upload_id);
+                }
+              }}
+              disabled={isCurrent}
+              title={isCurrent ? "Cannot delete the current upload" : "Delete this report"}
+              className={[
+                "inline-flex items-center justify-center w-7 h-7 rounded-lg border transition-all",
+                isCurrent
+                  ? "text-gray-600 border-gray-700 cursor-not-allowed opacity-40"
+                  : "text-red-400 border-red-800/50 hover:border-red-500 hover:bg-red-900/20",
+              ].join(" ")}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </td>
       </tr>
 

@@ -71,6 +71,11 @@ def _html_body(summary: str, date_range: str) -> str:
           <img src="cid:chart_atrisk" alt="Top At-Risk Categories">
         </div>
       </div>
+
+      <div class="chart-card" style="margin-top: 20px;">
+        <div class="chart-label">Interventions by Facility</div>
+        <img src="cid:chart_interventions" alt="Interventions by Facility" style="width:100%;display:block;">
+      </div>
     </div>
     <div class="footer">
       This report was automatically generated &mdash; please do not reply to this email.

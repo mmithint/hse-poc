@@ -4,7 +4,7 @@ from db import get_db
 
 async def save_upload(doc: dict) -> str:
     db = get_db()
-    result = await db["uploads"].insert_one(doc)
+    result = await db["hse_poc"].insert_one(doc)
     return str(result.inserted_id)
 
 
@@ -12,17 +12,29 @@ async def update_summaries(
     upload_id: str,
     user_summary: str,
     manager_summary: str,
+    detailed_summary: str = "",
+    interventions_by_facility: dict = None,
+    total_interventions: int = 0,
+    category_analysis: list = None,
 ) -> None:
     db = get_db()
-    await db["uploads"].update_one(
+    update_fields = {
+        "user_summary": user_summary,
+        "manager_summary": manager_summary,
+        "detailed_summary": detailed_summary,
+        "chart_data.interventions_by_facility": interventions_by_facility or {},
+        "chart_data.total_interventions": total_interventions,
+        "category_analysis": category_analysis or [],
+    }
+    await db["hse_poc"].update_one(
         {"_id": upload_id},
-        {"$set": {"user_summary": user_summary, "manager_summary": manager_summary}},
+        {"$set": update_fields},
     )
 
 
 async def get_all_uploads() -> list[dict]:
     db = get_db()
-    cursor = db["uploads"].find(
+    cursor = db["hse_poc"].find(
         {},
         {
             "_id": 1,
@@ -33,6 +45,7 @@ async def get_all_uploads() -> list[dict]:
             "total_observations": 1,
             "user_summary": 1,
             "manager_summary": 1,
+            "detailed_summary": 1,
         },
     ).sort("upload_date", -1)
     return await cursor.to_list(length=None)
@@ -40,4 +53,10 @@ async def get_all_uploads() -> list[dict]:
 
 async def get_upload_by_id(upload_id: str) -> Optional[dict]:
     db = get_db()
-    return await db["uploads"].find_one({"_id": upload_id})
+    return await db["hse_poc"].find_one({"_id": upload_id})
+
+
+async def delete_upload(upload_id: str) -> int:
+    db = get_db()
+    result = await db["hse_poc"].delete_one({"_id": upload_id})
+    return result.deleted_count
