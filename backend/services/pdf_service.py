@@ -125,17 +125,35 @@ def _kpi_table(
 
 
 def _summary_table(summary_text: str, page_width: float) -> Table:
-    """Light blue summary box with left border accent."""
+    """Light blue summary box with left border accent.
+    Parses markdown-style headers (## / #) into bold headings.
+    """
     s = _styles()
     col_w = page_width - 2 * MARGIN
+
+    heading_style = ParagraphStyle(
+        "summary_heading", fontSize=11, textColor=NAVY,
+        fontName="Helvetica-Bold", leading=16, spaceBefore=6, spaceAfter=2,
+    )
+    subheading_style = ParagraphStyle(
+        "summary_subheading", fontSize=10.5, textColor=NAVY,
+        fontName="Helvetica-Bold", leading=15, spaceBefore=4, spaceAfter=2,
+    )
 
     lines = [ln for ln in summary_text.strip().splitlines()]
     paragraphs = []
     for ln in lines:
-        if ln.strip():
-            paragraphs.append(Paragraph(xml_escape(ln.strip()), s["body"]))
-        else:
+        stripped = ln.strip()
+        if not stripped:
             paragraphs.append(Spacer(1, 6))
+        elif stripped.startswith("## "):
+            text = stripped[3:].strip()
+            paragraphs.append(Paragraph(xml_escape(text), subheading_style))
+        elif stripped.startswith("# "):
+            text = stripped[2:].strip()
+            paragraphs.append(Paragraph(xml_escape(text), heading_style))
+        else:
+            paragraphs.append(Paragraph(xml_escape(stripped), s["body"]))
 
     if not paragraphs:
         paragraphs = [Spacer(1, 6)]
@@ -186,7 +204,10 @@ def _chart_grid(chart_images: Dict[str, bytes], page_width: float) -> List:
         img_bytes = chart_images.get(cid, b"")
         if not img_bytes:
             continue
-        chart_h = full_w * h_ratio
+        if cid == "chart_category_full":
+            chart_h = PAGE_H - 2 * MARGIN - 2.5 * cm
+        else:
+            chart_h = full_w * h_ratio
         flowables.append(PageBreak())
         flowables.append(Paragraph(title, label_style))
         flowables.append(Spacer(1, 0.3 * cm))

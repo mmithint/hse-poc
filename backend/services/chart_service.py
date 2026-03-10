@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.patheffects as pe
 
 from models.schemas import ChartData
 
@@ -79,12 +80,12 @@ def chart_by_category(by_category: Dict[str, int]) -> bytes:
         return _placeholder("No category data available")
 
     pairs = sorted(by_category.items(), key=lambda x: x[1])
-    categories = [_wrap(p[0], 25) for p in pairs]
+    categories = [_wrap(p[0], 30) for p in pairs]
     counts = [p[1] for p in pairs]
     bar_colors = [COLORS_MULTI[i % len(COLORS_MULTI)] for i in range(len(categories))]
 
-    fig_h = max(4, len(categories) * 0.65 + 1.8)
-    fig, ax = plt.subplots(figsize=(10, fig_h))
+    fig_h = max(4, len(categories) * 0.75 + 2.0)
+    fig, ax = plt.subplots(figsize=(12, fig_h))
     _apply_axes(ax, fig)
 
     bars = ax.barh(categories, counts, color=bar_colors, edgecolor="none", height=0.55)
@@ -98,9 +99,11 @@ def chart_by_category(by_category: Dict[str, int]) -> bytes:
 
     ax.set_xlabel("Number of Observations", color=LABEL_COLOR, fontsize=11)
     ax.set_title("Observations by Category", color=TEXT_COLOR, fontsize=14, pad=14, fontweight="bold")
+    ax.tick_params(axis='y', labelsize=11, pad=8)
     ax.xaxis.grid(True, color=GRID_COLOR, linewidth=0.5)
     ax.set_axisbelow(True)
     ax.set_xlim(0, max(counts) * 1.18)
+    fig.subplots_adjust(left=0.35)
     fig.tight_layout()
     return _fig_to_bytes(fig)
 
@@ -116,12 +119,12 @@ def chart_top_categories(by_category: Dict[str, int], limit: int = 10) -> bytes:
     # Reverse for horizontal bar (highest at top)
     top_pairs = top_pairs[::-1]
 
-    categories = [_wrap(p[0], 25) for p in top_pairs]
+    categories = [_wrap(p[0], 30) for p in top_pairs]
     counts = [p[1] for p in top_pairs]
     bar_colors = [COLORS_MULTI[i % len(COLORS_MULTI)] for i in range(len(categories))]
 
-    fig_h = max(4, len(categories) * 0.65 + 1.8)
-    fig, ax = plt.subplots(figsize=(10, fig_h))
+    fig_h = max(4, len(categories) * 0.75 + 2.0)
+    fig, ax = plt.subplots(figsize=(12, fig_h))
     _apply_axes(ax, fig)
 
     bars = ax.barh(categories, counts, color=bar_colors, edgecolor="none", height=0.55)
@@ -135,54 +138,74 @@ def chart_top_categories(by_category: Dict[str, int], limit: int = 10) -> bytes:
 
     ax.set_xlabel("Number of Observations", color=LABEL_COLOR, fontsize=11)
     ax.set_title("Top 10 Categories", color=TEXT_COLOR, fontsize=14, pad=14, fontweight="bold")
+    ax.tick_params(axis='y', labelsize=11, pad=8)
     ax.xaxis.grid(True, color=GRID_COLOR, linewidth=0.5)
     ax.set_axisbelow(True)
     ax.set_xlim(0, max(counts) * 1.18)
+    fig.subplots_adjust(left=0.35)
     fig.tight_layout()
     return _fig_to_bytes(fig)
 
 
-def chart_safe_vs_atrisk(safe_vs_atrisk: Dict[str, int]) -> bytes:
-    """Donut chart — Safe vs At-Risk."""
+def chart_safe_vs_atrisk(safe_vs_atrisk: Dict[str, int]) -> tuple:
+    """Donut chart — Safe vs At-Risk. Returns (white_bg_bytes, transparent_bg_bytes)."""
     safe = safe_vs_atrisk.get("Safe", 0)
     atrisk = safe_vs_atrisk.get("At Risk", 0)
     total = safe + atrisk
 
     if total == 0:
-        return _placeholder("No observation data available")
+        placeholder = _placeholder("No observation data available")
+        return placeholder, placeholder
 
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=(8, 6))  # 1600x1200 at 200 DPI
     _apply_axes(ax, fig)
 
     wedges, _, autotexts = ax.pie(
         [safe, atrisk],
         colors=[COLOR_SAFE, COLOR_ATRISK],
-        autopct=lambda pct: f"{pct:.1f}%\n({int(round(pct / 100 * total))})",
+        autopct=lambda pct: f"{pct:.1f}%\n({int(round(pct / 100 * total)):,})",
         startangle=90,
-        wedgeprops={"width": 0.5, "edgecolor": BG_COLOR, "linewidth": 3},
-        pctdistance=0.75,
+        wedgeprops={"width": 0.3, "edgecolor": BG_COLOR, "linewidth": 4},
+        pctdistance=0.85,
     )
     for at in autotexts:
         at.set_color("white")
-        at.set_fontsize(12)
+        at.set_fontsize(11)
         at.set_fontweight("bold")
+        at.set_path_effects([pe.withStroke(linewidth=2, foreground="black")])
 
-    ax.text(0, 0, f"{total}\nTotal", ha="center", va="center",
-            color=TEXT_COLOR, fontsize=18, fontweight="bold")
+    # Center text — split number and label for balanced sizing
+    ax.text(0, 0.04, f"{total:,}", ha="center", va="center",
+            color=TEXT_COLOR, fontsize=22, fontweight="bold")
+    ax.text(0, -0.09, "Total", ha="center", va="center",
+            color=LABEL_COLOR, fontsize=13)
 
     legend_patches = [
         mpatches.Patch(color=COLOR_SAFE, label=f"Safe: {safe:,}"),
         mpatches.Patch(color=COLOR_ATRISK, label=f"At Risk: {atrisk:,}"),
     ]
     ax.legend(handles=legend_patches, loc="lower center",
-              bbox_to_anchor=(0.5, -0.06), ncol=2,
-              labelcolor=TEXT_COLOR, facecolor="#F5F5F5", edgecolor="#E0E0E0",
-              fontsize=12)
+              bbox_to_anchor=(0.5, -0.06), ncol=2, frameon=False,
+              labelcolor=TEXT_COLOR, fontsize=11)
 
-    ax.set_title("At-Risk vs Safe Observations", color=TEXT_COLOR, fontsize=14,
-                 pad=14, fontweight="bold")
+    ax.set_title("At-Risk vs Safe Observations", color=TEXT_COLOR, fontsize=16,
+                 pad=15, fontweight="bold")
     fig.tight_layout()
-    return _fig_to_bytes(fig)
+
+    # Save white-bg version
+    buf_white = io.BytesIO()
+    fig.savefig(buf_white, format="png", dpi=200, bbox_inches="tight",
+                facecolor=fig.get_facecolor())
+    buf_white.seek(0)
+
+    # Save transparent-bg version
+    buf_trans = io.BytesIO()
+    fig.savefig(buf_trans, format="png", dpi=200, bbox_inches="tight",
+                transparent=True)
+    buf_trans.seek(0)
+
+    plt.close(fig)
+    return buf_white.read(), buf_trans.read()
 
 
 def chart_top_atrisk(top_atrisk_categories: Dict[str, int]) -> bytes:
@@ -345,9 +368,13 @@ def generate_all_charts(chart_data: ChartData) -> Dict[str, bytes]:
     charts = {
         "chart_facility": chart_by_facility(chart_data.by_facility),
         "chart_category": chart_top_categories(chart_data.by_category),
-        "chart_saferisk": chart_safe_vs_atrisk(chart_data.safe_vs_atrisk),
+        "chart_saferisk": None,  # filled below
         "chart_atrisk":   chart_top_atrisk(chart_data.top_atrisk_categories),
     }
+    # Unpack donut chart white-bg and transparent-bg versions
+    white, trans = chart_safe_vs_atrisk(chart_data.safe_vs_atrisk)
+    charts["chart_saferisk"] = white
+    charts["chart_saferisk_transparent"] = trans
     # Full category chart (all categories) — used below the grid when >10
     if len(chart_data.by_category) > 10:
         charts["chart_category_full"] = chart_by_category(chart_data.by_category)
